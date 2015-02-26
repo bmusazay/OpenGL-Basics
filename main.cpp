@@ -5,13 +5,28 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include "Libraries\glm\glm.hpp"
+#include "Libraries\glm\gtc\matrix_transform.hpp"
+#include "Libraries\glm\gtc\type_ptr.hpp"
 
 #define PI 3.14159265f
 
 void drawButtons();
 
-int winw = 600;
-int winh = 600;
+int winw = 720;
+int winh = 610;
+GLfloat anglePyramid = 0.0f;  
+GLfloat angleCube = 0.0f;  
+GLfloat anglueSphere = 0.0f;
+bool rotatePyramid = false;
+bool rotateSphere = false;
+bool rotateCube = false;
+float sX, sY, pX, pY, cX, cY;
+float scaleS, scaleP, scaleC;
+float move = 0.0f;
+
+
+int refreshRate = 15;
 
 //struct for keeping track of mouse input with GLUT functions
 struct Mouse
@@ -67,22 +82,25 @@ void CreateButton(std::string id, char *label, ButtonCallback cb, int x, int y, 
 	buttonList = p;
 }
 
-static void squareButtonCallback()
+void enableButton(std::string id)
 {
-	glBegin(GL_QUADS);
-	glColor3f(1.0f, 0.0f, 0.0f);
-	glVertex2f(50.0f, 500.0f);
-	glVertex2f(150.0f, 500.0f);
-	glVertex2f(150.0f, 400.0f);
-	glVertex2f(50.0f, 400.0f);
-	glEnd();
-	glFlush();
-
-	//disable button
 	Button* b = buttonList;
 	while (b)
 	{
-		if (b->uniqueId == "squareButton")
+		if (b->uniqueId == id)
+		{
+			b->enabled = true;
+		}
+		b = b->next;
+	}
+}
+
+void disableButton(std::string id)
+{
+	Button* b = buttonList;
+	while (b)
+	{
+		if (b->uniqueId == id)
 		{
 			b->enabled = false;
 		}
@@ -90,79 +108,139 @@ static void squareButtonCallback()
 	}
 }
 
-static void traingleButtonCallback()
-{
-	//TRIANGLE
-	glBegin(GL_TRIANGLES);
-
-	glColor3f(1.0f, 0.0f, 0.0f); // Red
-	glVertex2f(400.0f, 550.0f);
-	glColor3f(0.0f, 1.0f, 0.0f); // Green
-	glVertex2f(300.0f, 400.0f);
-	glColor3f(0.0f, 0.0f, 1.0f); // Blue
-	glVertex2f(500.0f, 400.0f);
-	glEnd();
-	glFlush();
-
-	//disable button
-	Button* b = buttonList;
-	while (b)
-	{
-		if (b->uniqueId == "triangleButton")
-		{
-			b->enabled = false;
-		}
-		b = b->next;
-	}
-}
-
-static void circleButtonCallback()
-{
-	//CIRCLE
-	glBegin(GL_TRIANGLE_FAN);
-	glColor3f(0.0f, 0.0f, 1.0f);  // Blue
-	glVertex2f(260.0f, 240.0f);       // Center of circle
-	int numSegments = 100;
-	GLfloat angle;
-	for (int i = 0; i <= numSegments; i++) { // Last vertex same as first vertex
-		angle = i * 2.0f * PI / numSegments;  // 360 deg for all segments
-		glVertex2f(cos(angle) * 75.0f + 260.0f, sin(angle) * 75.0f + 240.0f);
-	}
-	glEnd();
-	glFlush();
-
-	//disable button
-	Button* b = buttonList;
-	while (b)
-	{
-		if (b->uniqueId == "circleButton")
-		{
-			b->enabled = false;
-		}
-		b = b->next;
-	}
-}
-
-static void clearButtonCallback()
-{
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	Button* b = buttonList;
-
-	//re-enable all buttons
-	while (b)
-	{
-		b->enabled = true;
-		b = b->next;
-	}
-	//redraw buttons
-	drawButtons();
-}
 static void exitButtonCallback()
 {
 	std::exit(0);
 }
+static void rotateAllBcb()
+{
+	if (rotateSphere && rotatePyramid && rotateCube)
+	{
+		rotateSphere = false;
+		rotatePyramid = false;
+		rotateCube = false;
+	}
+	 else 
+	 {
+		 rotateSphere = true;
+		 rotatePyramid = true;
+		 rotateCube = true;
+	 }
+}
+static void rotateSphereBcb()
+{
+	rotateSphere = rotateSphere ? 0 : 1;
+}
+static void rotatePyrmaidBcb()
+{
+	rotatePyramid = rotatePyramid ? 0 : 1;
+}
+static void rotateCubeBcb()
+{
+	rotateCube = rotateCube ? 0 : 1;
+}
+static void allLeftBcb()
+{
+	sX -= 0.1f;
+	cX -= 0.1f;
+	pX -= 0.1f;
+}
+static void allRightBcb()
+{
+	sX += 0.1f;
+	cX += 0.1f;
+	pX += 0.1f;
+}
+static void allUpBcb()
+{
+	sY += 0.1f;
+	cY += 0.1f;
+	pY += 0.1f;
+}
+static void allDownBcb()
+{
+	sY -= 0.1f;
+	cY -= 0.1f;
+	pY -= 0.1f;
+}
 
+static void sLeftBcb()
+{
+	sX -= 0.1f;
+}
+static void sRightBcb()
+{
+	sX += 0.1f;
+}
+static void sUpBcb()
+{
+	sY += 0.1f;
+}
+static void sDownBcb()
+{
+	sY -= 0.1f;
+}
+
+static void pLeftBcb()
+{
+	pX -= 0.1f;
+}
+static void pRightBcb()
+{
+	pX += 0.1f;
+}
+static void pUpBcb()
+{
+	pY += 0.1f;
+}
+static void pDownBcb()
+{
+	pY -= 0.1f;
+}
+
+static void cLeftBcb()
+{
+	cX -= 0.1f;
+}
+static void cRightBcb()
+{
+	cX += 0.1f;
+}
+static void cUpBcb()
+{
+	cY += 0.1f;
+}
+static void cDownBcb()
+{
+	cY -= 0.1f;
+}
+
+static void scaleAllBcb()
+{
+	scaleS += 0.1f;
+	scaleP += 0.1f;
+	scaleC += 0.1f;
+}
+static void scaleSphereBcb()
+{
+	scaleS += 0.1f;
+}
+static void scalePyramidBcb()
+{
+	scaleP += 0.1f;
+}
+static void scaleCubeAllBcb()
+{
+	scaleC += 0.1f;
+}
+static void moveinCB()
+{
+	move += 0.1f;
+}
+static void moveoutCB()
+{
+	move -= 0.1f;
+}
 //Font function for drawing text to buttons
 void Font(void *font, char *text, int x, int y)
 {
@@ -252,17 +330,52 @@ void ButtonPassive(int x, int y)
 
 
 /* Initialize OpenGL Graphics and Buttons */
-void initGL() 
+void initGL()
 {
-	// Set "clearing" or background color
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Black and opaque
-
+	glEnable(GL_LIGHT0);
+	sX = sY = pX = pY = cX = cY = 0.0f;
+	scaleS = scaleP = scaleC = 1.0f;
+	
 	//create our five buttons
-	CreateButton("squareButton", "Draw Square", squareButtonCallback, 40, 71, 140, 35);
-	CreateButton("triangleButton", "Draw Triangle", traingleButtonCallback, 230, 71, 140, 35);
-	CreateButton("circleButton", "Draw Circle", circleButtonCallback, 420, 71, 140, 35);
-	CreateButton("clearButton", "Clear All", clearButtonCallback, 106, 18, 140, 35);
-	CreateButton("exitButton", "Exit", exitButtonCallback, 352, 18, 140, 35);
+	//CreateButton("squareButton", "Draw Square", squareButtonCallback, 40, winh - 71, 140, 35);
+	//CreateButton("triangleButton", "Draw Triangle", traingleButtonCallback, 230, 71, 140, 35);
+	//CreateButton("circleButton", "Draw Circle", circleButtonCallback, 420, 71, 140, 35);
+	//CreateButton("clearButton", "Clear All", clearButtonCallback, 106, 18, 140, 35);
+	CreateButton("exitButton", "Exit", exitButtonCallback, 10, 10, 50, 25);
+
+	CreateButton("rotateAllButton", "Rotate All", rotateAllBcb, 10, winh - 140 + 40, 95, 25);
+	CreateButton("leftAllButton", "<-", allLeftBcb, 10, winh - 105 + 40, 20, 25);
+	CreateButton("upAllButton", "^", allUpBcb, 35, winh - 105 + 40, 20, 25);
+	CreateButton("downAllButton", "V", allDownBcb, 60, winh - 105 + 40, 20, 25);
+	CreateButton("rightAllButton", "->", allRightBcb, 85, winh - 105 + 40, 20, 25);
+	CreateButton("scaleAllButton", "Scale All", scaleAllBcb, 10, winh - 70 + 40, 95, 25);
+	//createbutton
+
+	CreateButton("rotateSphereButton", "Rotate Sphere", rotateSphereBcb, 160, winh - 140 + 40, 95, 25);
+	CreateButton("leftSphereButton", "<-", sLeftBcb, 160, winh - 105 + 40, 20, 25);
+	CreateButton("upSphereButton", "^", sUpBcb, 150 + 35, winh - 105 + 40, 20, 25);
+	CreateButton("downSphereButton", "V", sDownBcb, 150 + 60, winh - 105 + 40, 20, 25);
+	CreateButton("rightSphereButton", "->", sRightBcb, 150 + 85, winh - 105 + 40, 20, 25);
+	CreateButton("scaleSphereButton", "Scale Sphere", scaleSphereBcb, 160, winh - 70 + 40, 95, 25);
+	//shear
+
+	CreateButton("rotatePyramidButton", "Rotate Pyramid", rotatePyrmaidBcb, 310, winh - 140 + 40, 95, 25);
+	CreateButton("leftPyramidButton", "<-", pLeftBcb, 310, winh - 105 + 40, 20, 25);
+	CreateButton("upPyramidButton", "^", pUpBcb, 310 + 25, winh - 105 + 40, 20, 25);
+	CreateButton("downPyramidButton", "V", pDownBcb, 310 + 50, winh - 105 + 40, 20, 25);
+	CreateButton("rightPyramidButton", "->", pRightBcb, 310 + 75, winh - 105 + 40, 20, 25);
+	CreateButton("scalePyramidButton", "Scale Pyramid", scalePyramidBcb, 310, winh - 70 + 40, 95, 25);
+
+	CreateButton("rotateCubeButton", "Rotate Cube", rotateCubeBcb, 460, winh - 140 + 40, 95, 25);
+	CreateButton("leftCubeButton", "<-", cLeftBcb, 460, winh - 105 + 40, 20, 25);
+	CreateButton("upCubeButton", "^", cUpBcb, 460 + 25, winh - 105 + 40, 20, 25);
+	CreateButton("downCubeButton", "V", cDownBcb, 460 + 50, winh - 105 + 40, 20, 25);
+	CreateButton("rightCubeButton", "->", cRightBcb, 460 + 75, winh - 105 + 40, 20, 25);
+	CreateButton("scaleCubeButton", "Scale Cube", scaleCubeAllBcb, 460, winh - 70 + 40, 95, 25);
+
+	CreateButton("moveinButton", "Move In", moveinCB, 610, winh - 140 + 40, 95, 25);
+	CreateButton("moveoutButton", "Move Out", moveoutCB, 610, winh - 105 + 40, 95, 25);
+
 }
 
 
@@ -323,9 +436,9 @@ void drawButtons()
 
 		glLineWidth(1);
 		//Calculate the x and y coords for the text string in order to center it.
-		fontx = b->x + (b->w - glutBitmapLength(GLUT_BITMAP_HELVETICA_18,
-						(const unsigned char*)b->label)) / 2;
-		fonty = b->y + (b->h - 8) / 2;
+		fontx = b->x + (b->w - glutBitmapLength(GLUT_BITMAP_HELVETICA_10,
+			(const unsigned char*)b->label)) / 2;
+		fonty = b->y + (b->h + 5) / 2;
 
 		// visual effect of label
 		if (b->state) {
@@ -335,13 +448,13 @@ void drawButtons()
 		if (b->highlighted)
 		{
 			glColor3f(0, 0, 0);
-			Font(GLUT_BITMAP_HELVETICA_18, b->label, fontx, fonty);
+			Font(GLUT_BITMAP_HELVETICA_10, b->label, fontx, fonty);
 			fontx--;
 			fonty--;
 		}
 
 		glColor3f(1, 1, 1);
-		Font(GLUT_BITMAP_HELVETICA_18, b->label, fontx, fonty);
+		Font(GLUT_BITMAP_HELVETICA_10, b->label, fontx, fonty);
 		b = b->next;
 	}
 
@@ -359,17 +472,149 @@ void drawPanel()
 	glColor3f(0.758824f, 0.758824f, 0.758824f);
 	glBegin(GL_QUADS);
 	glVertex2i(0, 0);
-	glVertex2i(600, 0);
-	glVertex2i(600, 125);
+	glVertex2i(winw, 0);
+	glVertex2i(winw, 125);
 	glVertex2i(0, 125);
 	glEnd();
 	glFlush();
 }
 
-void Draw()
-{	
-	drawPanel();
+void Draw2D()
+{
 	drawButtons();
+}
+
+void Draw3D()
+{	
+	glTranslatef(0.0f, 0.0f, -1.0f + move);
+	// DRAW CUBE
+	glPushMatrix();
+	glTranslatef(1.5f + cX, 0.0f + cY, -7.0f);
+	glRotatef(angleCube, 1.0f, 0.0f, 0.0f);
+	glScalef(scaleC, scaleC, scaleC);
+	glBegin(GL_QUADS);                // Begin drawing the color cube with 6 quads
+	// Top face (y = 0.54f)
+	glColor3f(0.0f, 1.0f, 0.0f);    
+	glVertex3f(0.54f, 0.54f, -0.54f);
+	glVertex3f(-0.54f, 0.54f, -0.54f);
+	glVertex3f(-0.54f, 0.54f, 0.54f);
+	glVertex3f(0.54f, 0.54f, 0.54f);
+
+	// Bottom face (y = -0.54f)
+	glVertex3f(0.54f, -0.54f, 0.54f);
+	glVertex3f(-0.54f, -0.54f, 0.54f);
+	glVertex3f(-0.54f, -0.54f, -0.54f);
+	glVertex3f(0.54f, -0.54f, -0.54f);
+
+
+	// Front face  (z = 0.54f)
+	glColor3f(0.0f, 0.0f, 1.0f);
+	glVertex3f(0.54f, 0.54f, 0.54f);
+	glVertex3f(-0.54f, 0.54f, 0.54f);
+	glVertex3f(-0.54f, -0.54f, 0.54f);
+	glVertex3f(0.54f, -0.54f, 0.54f);
+
+	// Back face (z = -0.54f)
+	glVertex3f(0.54f, -0.54f, -0.54f);
+	glVertex3f(-0.54f, -0.54f, -0.54f);
+	glVertex3f(-0.54f, 0.54f, -0.54f);
+	glVertex3f(0.54f, 0.54f, -0.54f);
+
+	// Left face (x = -0.54f)
+	glColor3f(1.0f, 0.0f, 1.0f);
+	glVertex3f(-0.54f, 0.54f, 0.54f);
+	glVertex3f(-0.54f, 0.54f, -0.54f);
+	glVertex3f(-0.54f, -0.54f, -0.54f);
+	glVertex3f(-0.54f, -0.54f, 0.54f);
+
+	// Right face (x = 0.54f)
+	glVertex3f(0.54f, 0.54f, -0.54f);
+	glVertex3f(0.54f, 0.54f, 0.54f);
+	glVertex3f(0.54f, -0.54f, 0.54f);
+	glVertex3f(0.54f, -0.54f, -0.54f);
+	glEnd();  // End of drawing color-cube
+	glPopMatrix();
+
+	
+	//DRAW PYRAMID
+	glPushMatrix();
+	glTranslatef(-1.5f + pX, 0.0f + pY, -6.0f);
+	  // Move left and into the screen
+
+	glRotatef(anglePyramid, 1.0f, 1.0f, 1.0f);
+	glScalef(scaleP, scaleP, scaleP);
+	glBegin(GL_TRIANGLES);          
+	// Front
+	glColor3f((208.0f / 255.0f), (17.0f / 255.0f), (232.0f / 255.0f));
+	glVertex3f(0.0f, 0.7f, 0.0f);
+	glVertex3f(-0.7f, -0.7f, 0.7f);
+	glVertex3f(0.7f, -0.7f, 0.7f);
+
+	// Right
+	glColor3f((147.0f / 255.0f), (17.0f / 255.0f), (232.0f / 255.0f));
+	glVertex3f(0.0f, 0.7f, 0.0f);
+	glVertex3f(0.7f, -0.7f, 0.7f);
+	glVertex3f(0.7f, -0.7f, -0.7f);
+
+	// Back
+	glColor3f((205.0f / 255.0f), (63.0f / 255.0f), (204.0f / 255.0f));
+	glVertex3f(0.0f, 0.7f, 0.0f);
+	glVertex3f(0.7f, -0.7f, -0.7f);
+	glVertex3f(-0.7f, -0.7f, -0.7f);
+
+	// Left
+	glColor3f((219.0f / 255.0f), (147.0f / 255.0f), (255.0f / 255.0f));
+	glVertex3f(0.0f, 0.7f, 0.0f);
+	glVertex3f(-0.7f, -0.7f, -0.7f);
+	glVertex3f(-0.7f, -0.7f, 0.7f);
+	glEnd();   // Done drawing the pyramid
+	glPopMatrix();
+
+	//DRAW SPHERE
+	glEnable(GL_LIGHTING);
+	glEnable(GL_COLOR_MATERIAL);
+	glPushMatrix();
+	glColor3f((232.0f / 255.0f), (46.0f / 255.0f), (47.0f / 255.0f));
+	glTranslated(0.0f + sX, 2.0f + sY, -8.0f);
+	glRotatef(anglueSphere, 0.0f, 1.0f, 0.0f);
+	glScalef(scaleS, scaleS, scaleS);
+	glutWireSphere(1, 35, 35);
+	glPopMatrix();
+	glDisable(GL_LIGHTING);
+	glDisable(GL_COLOR_MATERIAL);
+
+	if (rotatePyramid) anglePyramid += 0.2f;
+	if(rotateCube) angleCube -= 0.15f;
+	if (rotateSphere) anglueSphere += 0.4f;
+}
+
+void Draw()
+{
+	//prepare for 3d drawing
+	glClear(GL_COLOR_BUFFER_BIT |
+		GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+	
+	glDepthFunc(GL_LEQUAL);    // Set the type of depth-test
+	glShadeModel(GL_SMOOTH);   // Enable smooth shading
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(45, (winh == 0) ? (1) : ((float)winw / winh), 1, 100);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	Draw3D();
+	
+	//prepare for 2d overlay
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_LIGHTING);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(0, winw, winh, 0, -1, 1);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	Draw2D();
 	glutSwapBuffers();
 }
 
@@ -383,7 +628,7 @@ void Resize(int w, int h)
 //Keep track of mouse hover position
 void MousePassiveMotion(int x, int y)
 {
-	y = winh - y;
+	//y = winh - y;
 	//change in mouse position
 	int dx = x - TheMouse.x;
 	int dy = y - TheMouse.y;
@@ -396,7 +641,7 @@ void MousePassiveMotion(int x, int y)
 //Function for mouse clicks
 void MouseButton(int button, int state, int x, int y)
 {
-	y = winh - y;
+	//y = winh - y;
 	//update the mouse position	
 	TheMouse.x = x;
 	TheMouse.y = y;
@@ -440,7 +685,7 @@ void MouseButton(int button, int state, int x, int y)
 
 void MouseMotion(int x, int y)
 {
-	y = winh - y;
+	//y = winh - y;
 	//change in location
 	int dx = x - TheMouse.x;
 	int dy = y - TheMouse.y;
@@ -449,22 +694,29 @@ void MouseMotion(int x, int y)
 	TheMouse.y = y;
 	//check if over button
 	ButtonPassive(x, y);
+
 	glutPostRedisplay();
 }
 
-int main(int argc, char** argv) 
+void timer(int value) {
+	glutPostRedisplay();      // Post re-paint request to activate display()
+	glutTimerFunc(refreshRate, timer, 0); // next timer call milliseconds later
+}
+
+int main(int argc, char** argv)
 {
 	glutInit(&argc, argv);          // Initialize GLUT
 	glutInitWindowSize(winw, winh);   // Set the window's initial width & height
 	glutInitWindowPosition(50, 50); // Position the window's initial top-left corner
 
-	glutCreateWindow("Shapes");  // Create window with the given title
+	glutCreateWindow("3D Shapes and Translations");  // Create window with the given title
 	
 	glutReshapeFunc(Resize);
 	glutDisplayFunc(Draw);       // Register callback handler for window re-paint event
 	glutMotionFunc(MouseMotion);
 	glutPassiveMotionFunc(MousePassiveMotion);
 	glutMouseFunc(MouseButton);
+	glutTimerFunc(0, timer, 0);
 	initGL();                       // Our own OpenGL initialization
 	glutMainLoop();                 // Enter the event-processing loop
 	return 0;
